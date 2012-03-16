@@ -1,0 +1,44 @@
+**** ATTENTION ****
+- Use FIREFOX to access AWS CONSOLE
+- Setup all demo before seminar
+- Remote to ec2 server to run web server
+
+*** EC2 ****
+(1) = Basic monitoring 
+(2) = Detailed monitoring
+(3) = node.js
+(4) = instance in autoscaling group
+
+**** DEMO ****
+
+== EC2
+- Include port 22 on security group
+- Remote to machine (1), ping machine (2)
+- Retrieve metadata:
+	+ $ curl -i http://169.254.169.254/latest/user-data
+	+ $ curl -i http://169.254.169.254/latest/meta-data
+- Adjust instance type
+
+== CLOUD WATCH
+- Run max-cpu script on (2) increase to get the email alarm
+
+== lOAD BALANCING
+- Access web via load balancing and observe the output from console in (3) instance: $ curl –i http://<balancing dns>/balacing
+
+
+= AUTO SCALING
+- Remote to (4) and run script
+- Observe the scaling activity happening via email and ./as-describe-auto-scaling-groups PolicyScalingGroup --headers --region ap-southeast-1
+
+== S3
+- Create buckets: $ ruby .\Resources\S3\setup.rb
+
+== NOTIFICATION
+- Remote to (3)
+- Publish a topic : ./sns-publish --message "{ author: 'Duy' , content : 'You're using SNS service' }" --subject "Demo for SNS"  --topic-arn <TopicArn>
+- See output from console in (3)
+
+== QUEUE
+- Go to SQS tab on AWS, select region US East (Virginia)
+- Send messages to queue : hello 1, hello 2, hello 3, hello 4
+- Run get_message.rb two times to get two messages, refresh on web to see the updated value on "Messages in Flight"

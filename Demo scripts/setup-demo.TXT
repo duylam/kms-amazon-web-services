@@ -1,0 +1,78 @@
+*** Install command line tools ***
+
+- EC2 : http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/SettingUp_CommandLine.html
+- Load Balancing: http://docs.amazonwebservices.com/ElasticLoadBalancing/latest/DeveloperGuide/UsingTheCommandLineTools.html
+- CloudWatch : http://docs.amazonwebservices.com/AmazonCloudWatch/latest/DeveloperGuide/choosing_your_cloudwatch_interface.html#UsingTheCLI
+- AutoScaling : http://docs.amazonwebservices.com/AutoScaling/latest/DeveloperGuide/astools.html#UsingTheCommandLineTools
+
+**** Setup  ****
+
+- Start Linux instances: 
+	(1) Basic monitoring : ./ec2-run-instances ami-b4b0cae6 -g quick-start-1 -k kmsrd -t t1.micro -z ap-southeast-1b --region ap-southeast-1
+	(2) Detailed monitoring: ./ec2-run-instances ami-b4b0cae6 -m -g quick-start-1 -k kmsrd -t t1.micro -z ap-southeast-1b --region ap-southeast-1
+	(3) Instance having node.js (http://nodejs.org/) installed: ./ec2-run-instances ami-d7451792 -g default -k kmsrd2 -t t1.micro --region us-west-1 -z us-west-1a
+- Note down public DNS + Instance ID + region + monitoring mode + Private IP of running instances:
+	+ ./ec2-describe-instances --region ap-southeast-1 (id 1) (id 2)
+	+ ./ec2-describe-instances --region us-west-1 (id 3)
+- Copy files to instances:
+	+ to (2): scp -i ~/kmsrd.pem run-cpu-max.sh ec2-user@<dns>:/home/ec2-user
+	+ to (3): scp -i ~/kmsrd2.pem web-server.js ec2-user@<dns>:/home/ec2-user
+- Remote to instances and run apps:
+	+ in (3): $ sudo node web-server.js
+	
+- Launch new load balancer : ./elb-create-lb MyDemoELB -z us-west-1a -l "lb-port=80,instance-port=80,protocol=http" --region us-west-1
+- Add instance to load balancer:
+	+ ./ec2-describe-instances -F "instance-state-code=0" -F "instance-state-code=16" --region us-west-1
+	+ ./elb-register-instances-with-lb MyDemoELB --region us-west-1 --instances <id> 
+
+- Setup SNS:
+	+ ./sns-create-topic NotificationTopicForDemo --region ap-southeast-1
+	+ ./sns-subscribe --protocol http --endpoint http://<DNS of (3)>/notification --topic-arn <Topic ARN>
+	+ Confirm subscription via link in console in (3)
+	+ ./sns-subscribe --protocol email --endpoint duylam@kms-technology.com --topic-arn <Topic ARN>
+	+ Confirm the subscription email Inbox
+- Setup alarm: ./mon-put-metric-alarm MyHighCPUAlarmForCloudWatch --metric-name CPUUtilization --namespace "AWS/EC2" --statistic Average --period 60 --evaluation-periods 1 --threshold 20 --comparison-operator GreaterThanThreshold --region ap-southeast-1 --alarm-actions <Topic ARN>
+
+- Create Launch Configuration: ./as-create-launch-config DetailedMonitoringLaunching -i ami-b4b0cae6 --monitoring-enabled -t t1.micro --key kmsrd --group quick-start-1 --region ap-southeast-1
+- Create Auto Scaling Group: ./as-create-auto-scaling-group PolicyScalingGroup -z ap-southeast-1b -l DetailedMonitoringLaunching -m 1 -M 5 --desired-capacity 1 --grace-period 90 --health-check-type EC2 --region ap-southeast-1
+- Setup notification for AutoScaling group: ./as-put-notification-configuration PolicyScalingGroup --notification-types autoscaling:EC2_INSTANCE_LAUNCH,autoscaling:EC2_INSTANCE_TERMINATE --region ap-southeast-1 --topic-arn <Topic ARN>
+- Create scale up policy: ./as-put-scaling-policy ScaleUpPolicy -g PolicyScalingGroup -a 1 -t ChangeInCapacity --cooldown 60 --region ap-southeast-1 
+- Create alarm for scale up: ./mon-put-metric-alarm MyHighCPUAlarm --metric-name CPUUtilization --namespace "AWS/EC2" --statistic Average --period 60 --evaluation-periods 1 --threshold 20 --comparison-operator GreaterThanThreshold --dimensions "AutoScalingGroupName=PolicyScalingGroup" --region ap-southeast-1 --alarm-actions <ARN of ScaleUpPolicy policy>
+- Create scale down policy: ./as-put-scaling-policy ScaleDownPolicy -g PolicyScalingGroup --adjustment=-1 -t ChangeInCapacity --cooldown  60 --region ap-southeast-1 
+- Create alarm for scale down: ./mon-put-metric-alarm MyLowCPUAlarm --metric-name CPUUtilization --namespace "AWS/EC2" --statistic Average --period 60 --evaluation-periods 1 --threshold 10 --comparison-operator LessThanThreshold --dimensions "AutoScalingGroupName=PolicyScalingGroup" --region ap-southeast-1 --alarm-actions <ARN of  ScaleDownPolicy policy>
+- Copy file to scaling instance: 
+	+ Find the id: ./as-describe-auto-scaling-groups PolicyScalingGroup --headers --region ap-southeast-1
+	+ Find the DNS name for the id: ./ec2-describe-instances -F "instance-state-code=0" -F "instance-state-code=16" --region ap-southeast-1
+	+ Copy file to the instance : scp -i ~/kmsrd.pem run-cpu-max.sh ec2-user@<dns>:/home/ec2-user
+	+ Note down this instance info
+
+- Update keys in .\Resources\aws_config.rb
+
+- Setup S3: $ ruby .\Resources\S3\setup.rb
+
+- Setup queue: $ ruby .\Resources\SimpleQueue\setup.rb
+	
+	
+**** Clean up *****
+
+- Delete load balacer: ./elb-delete-lb MyDemoELB --region us-west-1 --force
+
+- Delete alarm: ./mon-delete-alarms MyHighCPUAlarmForCloudWatch -f --region ap-southeast-1
+
+- Stop autoscaling: ./as-update-auto-scaling-group PolicyScalingGroup --max-size 0 --min-size 0 --region ap-southeast-1
+- Delete alarms: ./mon-delete-alarms MyHighCPUAlarm -f --region ap-southeast-1 && ./mon-delete-alarms MyLowCPUAlarm -f --region ap-southeast-1
+- Delete policy: ./as-delete-policy ScaleUpPolicy -g PolicyScalingGroup -f --region ap-southeast-1 && ./as-delete-policy ScaleDownPolicy -g PolicyScalingGroup -f --region ap-southeast-1
+- Delete Auto Scaling Group (wait around 5 sec): ./as-delete-auto-scaling-group PolicyScalingGroup -f --region ap-southeast-1
+- Delete Launch Configuration: ./as-delete-launch-config DetailedMonitoringLaunching -f --region ap-southeast-1
+
+- Delete SNS: ./sns-delete-topic <Topic ARN> -f
+
+- Kill ec2 instances: 
+	+ Find them: ./ec2-describe-instances -F "instance-state-code=0" -F "instance-state-code=16" --region ap-southeast-1 (0=pending, 16=running, 32=shutting-down, 48=terminated, 64=stopping, 80=stopped )
+	+ ./ec2-terminate-instances --region ap-southeast-1 <id 1> <id 2>
+	+ Find them: ./ec2-describe-instances -F "instance-state-code=0" -F "instance-state-code=16" --region us-west-1
+	+ ./ec2-terminate-instances --region us-west-1 <id 3>
+
+- Clear S3: $ ruby .\Resources\S3\cleanup.rb
+
+- Clear queue: $ ruby .\Resources\SimpleQueue\cleanup.rb
