@@ -3,6 +3,15 @@ var http = require('http'),
 
 http.createServer(function (req, res) {
 	switch(req.url) {
+		case '/balancing/timeout':
+			req.on('end', function() {
+				setTimeout( function() {
+					console.log('Response to client');
+					res.statusCode = 204;
+					res.end();
+				} , 70 * 1000 );
+			});
+			break;
 		case '/balancing':
 			req.on('end', function() {
 				console.log('Request headers: ');

@@ -16,22 +16,29 @@
 - Remote to machine (1), ping machine (2)
 - Retrieve metadata:
 	+ $ curl -i http://169.254.169.254/latest/user-data
-	+ $ curl -i http://169.254.169.254/latest/meta-data
-- Adjust instance type
+	+ $ curl -i http://169.254.169.254/latest/meta-data/
+- Adjust instance type:
+	+ See the result : $ curl -i http://169.254.169.254/latest/meta-data/instance-type
 
 == CLOUD WATCH
-- Run max-cpu script on (2) increase to get the email alarm
+- Remote to (3) and run : $ sudo node web-server.js
+- Run max-cpu script on (2) increase to get the email alarm + http notification in (3) console
 
 == lOAD BALANCING
-- Access web via load balancing and observe the output from console in (3) instance: $ curl –i http://<balancing dns>/balacing
+- Remote to (3) and run : $ sudo node web-server.js
+- Access web via load balancing and observe the output from console in (3) instance: 
+	+ See altered requests: $ curl -i http://<balancing dns>/balancing
+	+ Demo timeout (empty content from curl): $ curl -i http://<balancing dns>/balancing/timeout
 
 
 = AUTO SCALING
+- Remote to (3) and run : $ sudo node web-server.js
 - Remote to (4) and run script
-- Observe the scaling activity happening via email and ./as-describe-auto-scaling-groups PolicyScalingGroup --headers --region ap-southeast-1
+- Observe the scaling activity happening via email, console in (3) and ./as-describe-auto-scaling-groups PolicyScalingGroup --headers --region ap-southeast-1
 
 == S3
-- Create buckets: $ ruby .\Resources\S3\setup.rb
+- Download images from links in console
+- Receive error when listing
 
 == NOTIFICATION
 - Remote to (3)
@@ -40,5 +47,4 @@
 
 == QUEUE
 - Go to SQS tab on AWS, select region US East (Virginia)
-- Send messages to queue : hello 1, hello 2, hello 3, hello 4
 - Run get_message.rb two times to get two messages, refresh on web to see the updated value on "Messages in Flight"

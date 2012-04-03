@@ -8,12 +8,12 @@
 **** Setup  ****
 
 - Start Linux instances: 
-	(1) Basic monitoring : ./ec2-run-instances ami-b4b0cae6 -g quick-start-1 -k kmsrd -t t1.micro -z ap-southeast-1b --region ap-southeast-1
-	(2) Detailed monitoring: ./ec2-run-instances ami-b4b0cae6 -m -g quick-start-1 -k kmsrd -t t1.micro -z ap-southeast-1b --region ap-southeast-1
+	(1) Basic monitoring : ./ec2-run-instances ami-b4b0cae6 -g quick-start-1 -k kmsrd -t t1.micro -z ap-southeast-1b -d "This is user data on machine 01" --region ap-southeast-1
+	(2) Detailed monitoring: ./ec2-run-instances ami-b4b0cae6 -m -g quick-start-1 -k kmsrd -t t1.micro -d "This is user data on machine 02" -z ap-southeast-1b --region ap-southeast-1
 	(3) Instance having node.js (http://nodejs.org/) installed: ./ec2-run-instances ami-d7451792 -g default -k kmsrd2 -t t1.micro --region us-west-1 -z us-west-1a
-- Note down public DNS + Instance ID + region + monitoring mode + Private IP of running instances:
-	+ ./ec2-describe-instances --region ap-southeast-1 (id 1) (id 2)
-	+ ./ec2-describe-instances --region us-west-1 (id 3)
+- Note down public DNS + Instance ID + Private IP + region of running instances:
+	+ ./ec2-describe-instances --region ap-southeast-1 
+	+ ./ec2-describe-instances --region us-west-1 
 - Copy files to instances:
 	+ to (2): scp -i ~/kmsrd.pem run-cpu-max.sh ec2-user@<dns>:/home/ec2-user
 	+ to (3): scp -i ~/kmsrd2.pem web-server.js ec2-user@<dns>:/home/ec2-user
@@ -31,7 +31,7 @@
 	+ Confirm subscription via link in console in (3)
 	+ ./sns-subscribe --protocol email --endpoint duylam@kms-technology.com --topic-arn <Topic ARN>
 	+ Confirm the subscription email Inbox
-- Setup alarm: ./mon-put-metric-alarm MyHighCPUAlarmForCloudWatch --metric-name CPUUtilization --namespace "AWS/EC2" --statistic Average --period 60 --evaluation-periods 1 --threshold 20 --comparison-operator GreaterThanThreshold --region ap-southeast-1 --alarm-actions <Topic ARN>
+- Setup alarm: ./mon-put-metric-alarm MyHighCPUAlarmForCloudWatch --metric-name CPUUtilization --namespace "AWS/EC2" --statistic Average --period 60 --evaluation-periods 1 --threshold 20 --comparison-operator GreaterThanThreshold --dimensions "InstanceId=(id instance 2)" --region ap-southeast-1 --alarm-actions <Topic ARN>
 
 - Create Launch Configuration: ./as-create-launch-config DetailedMonitoringLaunching -i ami-b4b0cae6 --monitoring-enabled -t t1.micro --key kmsrd --group quick-start-1 --region ap-southeast-1
 - Create Auto Scaling Group: ./as-create-auto-scaling-group PolicyScalingGroup -z ap-southeast-1b -l DetailedMonitoringLaunching -m 1 -M 5 --desired-capacity 1 --grace-period 90 --health-check-type EC2 --region ap-southeast-1
@@ -42,15 +42,15 @@
 - Create alarm for scale down: ./mon-put-metric-alarm MyLowCPUAlarm --metric-name CPUUtilization --namespace "AWS/EC2" --statistic Average --period 60 --evaluation-periods 1 --threshold 10 --comparison-operator LessThanThreshold --dimensions "AutoScalingGroupName=PolicyScalingGroup" --region ap-southeast-1 --alarm-actions <ARN of  ScaleDownPolicy policy>
 - Copy file to scaling instance: 
 	+ Find the id: ./as-describe-auto-scaling-groups PolicyScalingGroup --headers --region ap-southeast-1
-	+ Find the DNS name for the id: ./ec2-describe-instances -F "instance-state-code=0" -F "instance-state-code=16" --region ap-southeast-1
+	+ Find the DNS name for the id: ./ec2-describe-instances --region ap-southeast-1 (id)
 	+ Copy file to the instance : scp -i ~/kmsrd.pem run-cpu-max.sh ec2-user@<dns>:/home/ec2-user
-	+ Note down this instance info
+	+ Note down this instance info : public dns, id, region
 
-- Update keys in .\Resources\aws_config.rb
+- Update keys in ./Resources/aws_config.rb. Reference: http://docs.amazonwebservices.com/AWSEC2/latest/UserGuide/using-credentials.html#using-credentials-access-key
 
-- Setup S3: $ ruby .\Resources\S3\setup.rb
+- Setup S3: $ cd ./Resources/S3 && ruby ./setup.rb
 
-- Setup queue: $ ruby .\Resources\SimpleQueue\setup.rb
+- Setup queue: $ cd ./Resources/SimpleQueue && ruby ./setup.rb
 	
 	
 **** Clean up *****

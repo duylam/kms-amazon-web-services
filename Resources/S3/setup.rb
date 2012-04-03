@@ -75,7 +75,10 @@ ABC
 		b_download.objects.each do |o|
 			puts "		+ #{o.public_url :secure => false}"
 		end		
-		puts "	- #{b_list.url}: allow listing"
+		puts "	- #{b_list.url}: allow listing. Can't download below items:"
+		b_list.objects.each do |o|
+			puts "		+ #{o.public_url :secure => false}"
+		end	
 	else
 		puts "There is already buckets named #{DOWNLOAD_BUCKET_NAME} or #{LIST_BUCKET_NAME} on region #{LOCATION}. This demo script can't run"
 	end
