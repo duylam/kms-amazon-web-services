@@ -37,6 +37,7 @@
 - Observe the scaling activity happening via email, console in (3) and ./as-describe-auto-scaling-groups PolicyScalingGroup --headers --region ap-southeast-1
 
 == S3
+- Setup S3: $ cd ./Resources/S3 && ruby ./setup.rb
 - Download images from links in console
 - Receive error when listing
 
@@ -46,5 +47,6 @@
 - See output from console in (3)
 
 == QUEUE
+- Setup queue: $ cd ./Resources/SimpleQueue && ruby ./setup.rb
 - Go to SQS tab on AWS, select region US East (Virginia)
 - Run get_message.rb two times to get two messages, refresh on web to see the updated value on "Messages in Flight"

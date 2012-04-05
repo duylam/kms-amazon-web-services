@@ -4,6 +4,7 @@
 - Load Balancing: http://docs.amazonwebservices.com/ElasticLoadBalancing/latest/DeveloperGuide/UsingTheCommandLineTools.html
 - CloudWatch : http://docs.amazonwebservices.com/AmazonCloudWatch/latest/DeveloperGuide/choosing_your_cloudwatch_interface.html#UsingTheCLI
 - AutoScaling : http://docs.amazonwebservices.com/AutoScaling/latest/DeveloperGuide/astools.html#UsingTheCommandLineTools
+- Install Ruby on your local machine: http://www.ruby-lang.org/en/
 
 **** Setup  ****
 
